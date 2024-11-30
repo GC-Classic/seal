@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<title>Property simulator</title>
+<meta charset="utf-8">
+<meta name=viewport content='width=device-width,initial-scale=1,maximum-scale=1'>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Monda:wght@700&family=Shippori+Antique&family=Sofia+Sans+Condensed:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://gc-classic.github.io/common.js"></script>
+<link rel="stylesheet" href="https://gc-classic.github.io/common.css">
+<style>
+    div {
+        max-width:20em; margin:.5em auto; padding:0 .5em;
+        position:relative;
+        display:flex; justify-content:space-between;
+
+        i {
+            z-index:1; position: relative;
+            mix-blend-mode: difference;
+        }
+        data {
+            position:absolute; left:0; top:0;
+            background:yellow;
+            height:100%;
+        }
+    }
+    figure {
+        display:flex; align-items:end; justify-content:center;
+        padding-bottom:1em;
+        
+        p {
+            width:1em; 
+            background:yellow;
+            margin:0;
+            position:relative;
+
+            &[title='26'] {
+                background:orange;
+            }
+            &::before {
+                content:attr(title)'_'; line-height:1;
+                mix-blend-mode:difference; z-index:1;
+                position:absolute; bottom:.1em; left:50%; transform:translateX(-50%);
+                writing-mode:vertical-rl;
+            }
+        }
+    }
+</style>
+<main>
+    <section></section>
+    <figure></figure>
+</main>
+<footer>
+    <a href="/rune/calculator"><span>Rune</span><span>符文</span></a>・
+    <a href="/damage"><span>Damage</span><span>傷害</span></a>・
+    <a href="/property"><span>Property</span><span>屬性</span></a>
+    <cite>By V. Man (@beybladeburst)</cite>
+</footer>
+<script>
+    onhashchange(location.hash.substring(1) || 'en');
+</script>
+<script>
+    const Seal = {
+        rates: [17.16,16.09,15.01,13.94,12.87,11.8,10.73,9.66,8.59,7.52,6.45,5.38,4.31,3.24,2.17,1.1],
+        limit: [15,   16,   17,   18,   19,   20,  22,   25,  30,  35,  40,  45,  50,  60,  90,  120],
+        opened: Array(16),
+        break: (sets) => {
+            let data = [];
+            for (let s = 0; s < sets; s++) {
+                for (let p = 0; p <= 15; p++)
+                    for (let t = 1; t <= Seal.limit[p]; t++) {
+                        if (Math.random() * 100 <= Seal.rates[p]) {
+                            Seal.opened[p] = t;
+                            break;
+                        }
+                        Seal.opened[p] = t;
+                    }
+                data[s] = Seal.opened.reduce((sum, t) => sum += t, 0);
+            }
+            return data;
+        }
+    }
+    const Chart = data => {
+        Q('section').replaceChildren(...Seal.opened.map((t, p) => 
+            E('div', [
+                E('i', `Piece ${p + 1}  ［${Seal.rates[p]}%］`),
+                E('i', `${t}/${Seal.limit[p]}`),
+                E('data', { style: { width: `${t / Seal.limit[p] * 100}%` } })
+            ]
+        )));
+        Chart.data = [...Array(62)].map(_ => 0);
+        data.forEach(t => Chart.data[Math.floor(t/10) - 1]++);
+        Q('figure').replaceChildren(...Chart.data.map((t, i) => E('p', {title: i+1, style: {height: `${(t ?? 0)/200}em`}})));
+
+        Chart.confidence(95);
+    }
+    Chart.confidence = (percent = 90) => {
+        let total = Chart.data.reduce((sum, t) => sum += t, 0), interval = [], lower = 0.5 - percent/200;
+        Chart.data = Chart.data.map(t => t/total);
+        let sum = 0;
+        for (let i = 0; i < 27; i++)
+            if ((sum += Chart.data[i]) >= lower) {
+                interval[0] = i;
+                break;
+            }
+        sum = 1;
+        for (let i = 55; i > 27; i--)
+            if ((sum -= Chart.data[i]) <= 1 - lower) {
+                interval[1] = i;
+                break;
+            } 
+        Q(`figure p:nth-child(${interval[0]+1})`).style.background = Q(`figure p:nth-child(${interval[1]+1})`).style.background = 'chartreuse';
+    }
+    Chart(Seal.break(100000));
+</script>
