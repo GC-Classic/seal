@@ -72,7 +72,7 @@
                             Seal.opened[p] = t;
                             break;
                         }
-                        Seal.opened[p] = t;
+                        Seal.opened[p] = t + 1;
                     }
                 data[s] = Seal.opened.reduce((sum, t) => sum += t, 0);
             }
