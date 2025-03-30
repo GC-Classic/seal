@@ -1,53 +1,34 @@
 <!DOCTYPE html>
-<title>Property simulator</title>
+<title>Seal breaker simulator</title>
 <meta charset="utf-8">
 <meta name=viewport content='width=device-width,initial-scale=1,maximum-scale=1'>
+<link rel="stylesheet" href="/common.css">
+<link rel="stylesheet" href="style.css">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Monda:wght@700&family=Shippori+Antique&family=Sofia+Sans+Condensed:wght@600;800&display=swap" rel="stylesheet">
-<script src="https://gc-classic.github.io/common.js"></script>
-<link rel="stylesheet" href="https://gc-classic.github.io/common.css">
-<style>
-    div {
-        max-width:20em; margin:.5em auto; padding:0 .5em;
-        position:relative;
-        display:flex; justify-content:space-between;
-
-        i {
-            z-index:1; position: relative;
-            mix-blend-mode: difference;
-        }
-        data {
-            position:absolute; left:0; top:0;
-            background:yellow;
-            height:100%;
-        }
-    }
-    figure {
-        display:flex; align-items:end; justify-content:center;
-        padding-bottom:1em;
-        
-        p {
-            width:1em; 
-            background:yellow;
-            margin:0;
-            position:relative;
-
-            &[title='26'] {
-                background:orange;
-            }
-            &::before {
-                content:attr(title)'_'; line-height:1;
-                mix-blend-mode:difference; z-index:1;
-                position:absolute; bottom:.1em; left:50%; transform:translateX(-50%);
-                writing-mode:vertical-rl;
-            }
-        }
-    }
-</style>
+<time></time>
 <main>
-    <section></section>
-    <figure></figure>
+    <button>1 set</button>
+    <button>100000 sets</button>
+    <p>16 pieces<label><input id="toggle-piece" type="checkbox"></label>13 pieces</p>
+    <section>
+        <article></article>
+        Seal opened: <output></output>
+    </section>
+    <figure>
+        <figcaption>
+            Distribution of number of seals required for a full set
+        </figcaption>
+        <span>Sets acquired: <output id="multiple"></output></span>
+    </figure>
+    <ul>
+        <li>26_ means 260 to 269.
+        <li>Theoretical expectation: 267.3 (16 pieces) / 249.6 (13 pieces)</li>
+        <li><input type="range" min="50" max="99" value="90" id="CI"><output>90</output>% confidence interval<mark style="background:chartreuse">　</mark>
+        <li><input type="range" min="50" max="99" value="90" id="safety"><output>90</output>% safety<mark style="background:orange">　</mark>
+    </ul>
 </main>
 <footer>
     <a href="/rune/calculator"><span>Rune</span><span>符文</span></a>・
@@ -55,47 +36,90 @@
     <a href="/property"><span>Property</span><span>屬性</span></a>
     <cite>By V. Man (@beybladeburst)</cite>
 </footer>
-<script>
-    onhashchange(location.hash.substring(1) || 'en');
-</script>
-<script>
+<script type="module">
+    import {A,E,O,Q} from 'https://aeoq.github.io/AEOQ.mjs'
+    import {} from '/UIX.js'
+
+    window.onhashchange(location.hash.substring(1) || 'en');
     const Seal = {
         rates: [17.16,16.09,15.01,13.94,12.87,11.8,10.73,9.66,8.59,7.52,6.45,5.38,4.31,3.24,2.17,1.1],
         limit: [15,   16,   17,   18,   19,   20,  22,   25,  30,  35,  40,  45,  50,  60,  90,  120],
-        opened: Array(16),
-        break: (sets) => {
-            let data = [];
-            for (let s = 0; s < sets; s++) {
-                for (let p = 0; p <= 15; p++)
-                    for (let t = 1; t <= Seal.limit[p]; t++) {
-                        if (Math.random() * 100 <= Seal.rates[p]) {
-                            Seal.opened[p] = t;
-                            break;
-                        }
-                        Seal.opened[p] = t + 1;
-                    }
-                data[s] = Seal.opened.reduce((sum, t) => sum += t, 0);
-            }
-            return data;
-        }
     }
-    const Chart = data => {
-        Q('section').replaceChildren(...Seal.opened.map((t, p) => 
-            E('div', [
-                E('i', `Piece ${p + 1}  ［${Seal.rates[p]}%］`),
-                E('i', `${t}/${Seal.limit[p]}`),
-                E('data', { style: { width: `${t / Seal.limit[p] * 100}%` } })
-            ]
-        )));
-        Chart.data = [...Array(62)].map(_ => 0);
-        data.forEach(t => Chart.data[Math.floor(t/10) - 1]++);
-        Q('figure').replaceChildren(...Chart.data.map((t, i) => E('p', {title: i+1, style: {height: `${(t ?? 0)/200}em`}})));
+    Q('#toggle-piece').onchange = ev => Q('progress:nth-of-type(-n+3),img:nth-last-of-type(-n+3)', el => el.hidden = ev.target.checked);
+    Q('article').append(...[...Array(16)].map((_, i) => E('img', {src: `S${i+1}.webp`})));
+    Q('article').before(...Seal.limit.map((max, i) => E('progress', {
+        title: i + 1, 
+        max: max + 1, value: 0, 
+        dataset: {rate: Seal.rates[i]}}
+    )));
+    Q('figure').append(...[...Array(62)].map((_, i) => E('p', {title: i + 1})));
+    Q('button:first-child').onclick = () => {
+        Q('figure').hidden = true;
+        Q('section').hidden = false;
+        Q('progress,output', el => el.value = 0);
+        Q('.done', el => el.classList.remove('done'));
+        requestAnimationFrame(single);
+    }
+    Q('button:nth-child(2)').onclick = () => {
+        Q('figure').hidden = false;
+        Q('section').hidden = true;
+        Q('#multiple').value = sets = 0;
+        Q('figure p', p => p.frequency = 0);
+        Q('figure').scrollIntoView();
+        Q('figure').scrollLeft = 287;
+        requestAnimationFrame(multiple);
+    }
 
-        Chart.confidence(95);
+    let last, output = Q('section output');
+    const single = t => {
+        last ??= t;
+        let current = Q('progress:nth-child(1 of :not(.done):not([hidden]))');
+        if (t - last > 25 && current) {
+            last = t;
+            current.value += 1;
+            output.value = parseInt(output.value) + 1;
+            if (current.value >= current.max || Math.random() * 100 <= parseFloat(current.dataset.rate)) {
+                current.classList.add('done');
+                let items = [Q('article img:not(.done):not([hidden])')].flat();
+                items[Math.floor(Math.random()*items.length)].classList.add('done');
+            }
+        } else if (!current) return;
+        requestAnimationFrame(single);
+    }
+    let sets = 0;
+    const multiple = t => {
+        last ??= t;
+        if (t - last > 1 && sets < 100000) {
+            last = t; for (let s = 0; s < 300; s++) {
+            sets++;
+            let times = [];
+            for (let p = Q('#toggle-piece').checked ? 3 : 0; p <= 15; p++)
+                for (let t = 1; t <= Seal.limit[p]; t++) {
+                    if (Math.random() * 100 <= Seal.rates[p]) {
+                        times[p] = t;
+                        break;
+                    }
+                    times[p] = t + 1;
+                }
+            times = times.reduce((sum, t) => sum += t, 0);
+            let p = Q(`p[title='${Math.floor(times/10)}']`);
+            p.frequency ??= 0;
+            p.frequency += 1;
+            p.style.height = p.frequency/200 + 'em'; }
+            Q('#multiple').value = sets;
+        } else if (sets >= 100000) return [Chart.confidence(), Chart.safety()];
+        requestAnimationFrame(multiple);
+    }
+    const Chart = {}
+    Chart.getData = () => {
+        Chart.data = Q('figure p').map(p => p.frequency);
+        let total = Chart.data.reduce((sum, t) => sum += t, 0);
+        Chart.data = Chart.data.map(t => t/total);
     }
     Chart.confidence = (percent = 90) => {
-        let total = Chart.data.reduce((sum, t) => sum += t, 0), interval = [], lower = 0.5 - percent/200;
-        Chart.data = Chart.data.map(t => t/total);
+        Q('figure p.mark', p => p.classList.remove('mark'));
+        let interval = [], lower = 0.5 - percent/200;
+        Chart.data ?? Chart.getData();
         let sum = 0;
         for (let i = 0; i < 27; i++)
             if ((sum += Chart.data[i]) >= lower) {
@@ -108,7 +132,27 @@
                 interval[1] = i;
                 break;
             } 
-        Q(`figure p:nth-child(${interval[0]+1})`).style.background = Q(`figure p:nth-child(${interval[1]+1})`).style.background = 'chartreuse';
+        Q(`figure p:is(:nth-child(${interval[0]+2}),:nth-child(${interval[1]+2}))`, p => p.classList.add('mark'));
     }
-    Chart(Seal.break(100000));
+    Chart.safety = (percent = 90) => {
+        Q('figure p.safe')?.classList.remove('safe');
+        let interval = [], lower = percent/100;
+        Chart.data ?? Chart.getData();
+        let sum = 0;
+        for (let i = 0; i < 55; i++)
+            if ((sum += Chart.data[i]) >= lower) {
+                interval[0] = i;
+                break;
+            }
+        Q(`figure p:nth-child(${interval[0]+2})`).classList.add('safe');
+    }
+
+    Q('#CI').oninput = ev => {
+        ev.target.nextElementSibling.value = ev.target.value;
+        Chart.confidence(ev.target.value);
+    }
+    Q('#safety').oninput = ev => {
+        ev.target.nextElementSibling.value = ev.target.value;
+        Chart.safety(ev.target.value);
+    }
 </script>
