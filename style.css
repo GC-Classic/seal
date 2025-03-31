@@ -2,7 +2,7 @@
 section {
     position:relative;
 }
-article {
+#single figure {
     display:grid; grid-template-columns:repeat(3,5em);
     justify-content:center;
     position:absolute; left:50%; top:2em; transform:translate(-50%,0);
@@ -19,7 +19,7 @@ button {
 }
 p {margin-bottom:0;}
 p>* {vertical-align:middle;}
-section progress {
+progress {
     appearance:none;
     display:flex; align-items:center; gap:0 .5em;
     width:calc(min(20em,100%) - .5em); height:1em;
@@ -40,10 +40,10 @@ section progress {
     &::-webkit-progress-bar {background:#ffffff55;}
     &::-webkit-progress-value {background:#ffbb0088;}
 }
-figure {
+#multiple figure {
     display:grid; grid-auto-flow: column; grid-template-rows: min-content auto;
     align-items:end;
-    padding-bottom:1em; margin-top:2em;
+    padding-bottom:1em;
     overflow-x:scroll;
     position:relative;
     
@@ -63,8 +63,8 @@ figure {
         &.safe {background:orange;}
     }
     figcaption {
-        grid-area:1/1/2/99; justify-self:start;
-        margin-left:16em;
+        grid-area:1/1/2/99;
+        margin-left:-11em;
     }
     span {
         position:absolute; bottom:3em; left:102%;
@@ -83,4 +83,8 @@ input[type=range] {
 }
 mark {
     margin-left:.5em;
+}
+p:has(#toggle-piece:not(:checked))+p data:last-of-type,
+p:has(#toggle-piece:checked)+p data:first-of-type {
+    display:none;
 }

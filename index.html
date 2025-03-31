@@ -13,22 +13,23 @@
     <button>1 set</button>
     <button>100000 sets</button>
     <p>16 pieces<label><input id="toggle-piece" type="checkbox"></label>13 pieces</p>
-    <section>
-        <article></article>
-        Seal opened: <output></output>
+    <p>Theoretical average: <data>267.3</data><data>249.6</data> seals / set</p>
+
+    <section id="single" hidden>
+        <figure></figure>
+        <h2>Seal opened: <output></output></h2>
     </section>
-    <figure>
-        <figcaption>
-            Distribution of number of seals required for a full set
-        </figcaption>
-        <span>Sets acquired: <output id="multiple"></output></span>
-    </figure>
-    <ul>
-        <li>26_ means 260 to 269.
-        <li>Theoretical expectation: 267.3 (16 pieces) / 249.6 (13 pieces)</li>
-        <li><input type="range" min="50" max="99" value="90" id="CI"><output>90</output>% confidence interval<mark style="background:chartreuse">　</mark>
-        <li><input type="range" min="50" max="99" value="90" id="safety"><output>90</output>% safety<mark style="background:orange">　</mark>
-    </ul>
+    <section id="multiple" hidden>
+        <figure>
+            <figcaption>Distribution of number of seals required for a full set</figcaption>
+        </figure>
+        <h2>Sets acquired: <output></output></h2>
+        <ul>
+            <li>26_ means 260 to 269.
+            <li><input type="range" min="50" max="99" value="90" id="CI"><output value="90">90</output>% confidence interval<mark style="background:chartreuse">　</mark>
+            <li><input type="range" min="50" max="99" value="90" id="safety"><output value="90">90</output>% safety<mark style="background:orange">　</mark>
+        </ul>
+    </section>
 </main>
 <footer>
     <a href="/analyzer/">Analyzer</a>・
@@ -45,52 +46,52 @@
         limit: [15,   16,   17,   18,   19,   20,  22,   25,  30,  35,  40,  45,  50,  60,  90,  120],
     }
     Q('#toggle-piece').onchange = ev => Q('progress:nth-of-type(-n+3),img:nth-last-of-type(-n+3)', el => el.hidden = ev.target.checked);
-    Q('article').append(...[...Array(16)].map((_, i) => E('img', {src: `S${i+1}.webp`})));
-    Q('article').before(...Seal.limit.map((max, i) => E('progress', {
-        title: i + 1, 
-        max: max + 1, value: 0, 
-        dataset: {rate: Seal.rates[i]}}
-    )));
-    Q('figure').append(...[...Array(62)].map((_, i) => E('p', {title: i + 1})));
     Q('button:first-child').onclick = () => {
-        Q('figure').hidden = true;
-        Q('section').hidden = false;
+        Q('#multiple').hidden = !(Q('#single').hidden = false);
+        Seal.output = Q('#single output');
         Q('progress,output', el => el.value = 0);
         Q('.done', el => el.classList.remove('done'));
         requestAnimationFrame(single);
     }
     Q('button:nth-child(2)').onclick = () => {
-        Q('figure').hidden = false;
-        Q('section').hidden = true;
-        Q('#multiple').value = sets = 0;
+        Q('#multiple').hidden = !(Q('#single').hidden = true);
+        Seal.output = Q('#multiple output');
+        Seal.output.value = 0;
         Q('figure p', p => p.frequency = 0);
-        Q('figure').scrollIntoView();
-        Q('figure').scrollLeft = 287;
+        Q('.safe,.mark', el => el.classList.remove('safe', 'mark'));
+        Q('#multiple').scrollIntoView();
         requestAnimationFrame(multiple);
     }
 
-    let last, output = Q('section output');
+    Q('#single figure').append(...[...Array(16)].map((_, i) => E('img', {src: `S${i+1}.webp`})));
+    Q('#single figure').before(...Seal.limit.map((max, i) => E('progress', {
+        title: i + 1, 
+        max: max + 1, value: 0, 
+        dataset: {rate: Seal.rates[i]}}
+    )));
+    Q('#multiple figure').append(...[...Array(62)].map((_, i) => E('p', {title: i + 1})));
+
+    let last;
     const single = t => {
         last ??= t;
         let current = Q('progress:nth-child(1 of :not(.done):not([hidden]))');
         if (t - last > 25 && current) {
             last = t;
-            current.value += 1;
-            output.value = parseInt(output.value) + 1;
+            current.value++;
+            Seal.output.value++;
             if (current.value >= current.max || Math.random() * 100 <= parseFloat(current.dataset.rate)) {
                 current.classList.add('done');
-                let items = [Q('article img:not(.done):not([hidden])')].flat();
+                let items = [Q('figure img:not(.done):not([hidden])')].flat();
                 items[Math.floor(Math.random()*items.length)].classList.add('done');
             }
         } else if (!current) return;
         requestAnimationFrame(single);
     }
-    let sets = 0;
     const multiple = t => {
         last ??= t;
-        if (t - last > 1 && sets < 100000) {
+        if (t - last > 1 && parseInt(Seal.output.value) < 100000) {
             last = t; for (let s = 0; s < 300; s++) {
-            sets++;
+            Seal.output.value++;
             let times = [];
             for (let p = Q('#toggle-piece').checked ? 3 : 0; p <= 15; p++)
                 for (let t = 1; t <= Seal.limit[p]; t++) {
@@ -103,10 +104,9 @@
             times = times.reduce((sum, t) => sum += t, 0);
             let p = Q(`p[title='${Math.floor(times/10)}']`);
             p.frequency ??= 0;
-            p.frequency += 1;
+            p.frequency++;
             p.style.height = p.frequency/200 + 'em'; }
-            Q('#multiple').value = sets;
-        } else if (sets >= 100000) return [Chart.confidence(), Chart.safety()];
+        } else if (parseInt(Seal.output.value) >= 100000) return [Chart.confidence(), Chart.safety()];
         requestAnimationFrame(multiple);
     }
     const Chart = {}
