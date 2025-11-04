@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<title>Seal breaker simulator</title>
+<meta charset="utf-8">
+<meta name=viewport content='width=device-width,initial-scale=1,maximum-scale=1'>
+<link rel="stylesheet" href="/common.css">
+<link rel="stylesheet" href="style.css">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Monda:wght@700&family=Shippori+Antique&family=Sofia+Sans+Condensed:wght@600;800&display=swap" rel="stylesheet">
+<time></time>
+<main>
+    <button><gc-item id="10203"></gc-item>1 set</button>
+    <button><gc-item id="10203"></gc-item>100000 sets</button>
+    <p>16 pieces<label><input id="toggle-piece" type="checkbox"></label>13 pieces</p>
+    <p>Theoretical average: <data>267.3</data><data>249.6</data> seals / set</p>
+
+    <section id="single" hidden>
+        <figure></figure>
+        <h2>Seal opened: <output></output></h2>
+    </section>
+    <section id="multiple" hidden>
+        <figure>
+            <figcaption>Distribution of number of seals required for a full set</figcaption>
+        </figure>
+        <h2>Sets acquired: <output></output></h2>
+        <ul>
+            <li>26_ means 260 to 269.
+            <li><input type="range" min="50" max="99" value="90" id="CI"><output value="90">90</output>% confidence interval<mark style="background:chartreuse">　</mark>
+            <li><input type="range" min="50" max="99" value="90" id="safety"><output value="90">90</output>% safety<mark style="background:orange">　</mark>
+        </ul>
+    </section>
+</main>
+<footer>
+    <a href="/analyzer/">Analyzer</a>・
+    <a href="/property/">Property</a>
+    <cite>By V. Man (@AEOQ) GuRan GCC 2021</cite>
+</footer>
+<script type="module">
+    import {A,E,O,Q} from 'https://aeoq.github.io/AEOQ.mjs'
+    import {} from '/UIX.js'
+
+    window.onhashchange(location.hash.substring(1) || 'en');
+    const Seal = {
+        rates: [17.16,16.09,15.01,13.94,12.87,11.8,10.73,9.66,8.59,7.52,6.45,5.38,4.31,3.24,2.17,1.1],
+        limit: [15,   16,   17,   18,   19,   20,  22,   25,  30,  35,  40,  45,  50,  60,  90,  120],
+    }
+    Q('#toggle-piece').onchange = ev => 
+        Q('progress:nth-of-type(-n+3),#single gc-item:nth-last-of-type(-n+3)', el => el.hidden = ev.target.checked);
+    Q('button:first-child').onclick = () => {
+        Q('#multiple').hidden = !(Q('#single').hidden = false);
+        Seal.output = Q('#single output');
+        Q('progress,output', el => el.value = 0);
+        Q('.done', el => el.classList.remove('done'));
+        requestAnimationFrame(single);
+    }
+    Q('button:nth-child(2)').onclick = () => {
+        Q('#multiple').hidden = !(Q('#single').hidden = true);
+        Seal.output = Q('#multiple h2 output');
+        Seal.output.value = 0;
+        Q('figure p', p => p.frequency = 0);
+        Q('.safe,.mark', el => el.classList.remove('safe', 'mark'));
+        Q('#multiple').scrollIntoView();
+        requestAnimationFrame(multiple);
+    }
+
+    Q('#single figure').append(...[112172,112173,112174,112175,112176,112177,112337,112405,112338,112339,112340,112168,112290,112291,112292,112293].map(id => E(`gc-item#${id}`)));
+    Q('#single figure').before(...Seal.limit.map((max, i) => E('progress', {
+        title: i + 1, 
+        max: max + 1, value: 0, 
+        dataset: {rate: Seal.rates[i]}}
+    )));
+    Q('#multiple figure').append(...[...Array(62)].map((_, i) => E('p', {title: i + 1})));
+
+    let last;
+    const single = t => {
+        last ??= t;
+        let current = Q('progress:nth-child(1 of :not(.done):not([hidden]))');
+        if (t - last > 25 && current) {
+            last = t;
+            current.value++;
+            Seal.output.value++;
+            if (current.value >= current.max || Math.random() * 100 <= parseFloat(current.dataset.rate)) {
+                current.classList.add('done');
+                let items = [Q('gc-item:not(.done):not([hidden])')].flat();
+                items[Math.floor(Math.random()*items.length)].classList.add('done');
+            }
+        } else if (!current) return;
+        requestAnimationFrame(single);
+    }
+    const multiple = t => {
+        last ??= t;
+        if (t - last > 1 && parseInt(Seal.output.value) < 100000) {
+            last = t; for (let s = 0; s < 300; s++) {
+            Seal.output.value++;
+            let times = [];
+            for (let p = Q('#toggle-piece').checked ? 3 : 0; p <= 15; p++)
+                for (let t = 1; t <= Seal.limit[p]; t++) {
+                    if (Math.random() * 100 <= Seal.rates[p]) {
+                        times[p] = t;
+                        break;
+                    }
+                    times[p] = t + 1;
+                }
+            times = times.reduce((sum, t) => sum += t, 0);
+            let p = Q(`p[title='${Math.floor(times/10)}']`);
+            p.frequency ??= 0;
+            p.frequency++;
+            p.style.height = p.frequency/200 + 'em'; }
+        } else if (parseInt(Seal.output.value) >= 100000) return [Chart.confidence(), Chart.safety()];
+        requestAnimationFrame(multiple);
+    }
+    const Chart = {}
+    Chart.getData = () => {
+        Chart.data = Q('figure p').map(p => p.frequency);
+        let total = Chart.data.reduce((sum, t) => sum += t, 0);
+        Chart.data = Chart.data.map(t => t/total);
+    }
+    Chart.confidence = (percent = 90) => {
+        Q('figure p.mark', p => p.classList.remove('mark'));
+        let interval = [], lower = 0.5 - percent/200;
+        Chart.data ?? Chart.getData();
+        let sum = 0;
+        for (let i = 0; i < 27; i++)
+            if ((sum += Chart.data[i]) >= lower) {
+                interval[0] = i;
+                break;
+            }
+        sum = 1;
+        for (let i = 55; i > 27; i--)
+            if ((sum -= Chart.data[i]) <= 1 - lower) {
+                interval[1] = i;
+                break;
+            } 
+        Q(`figure p:is(:nth-child(${interval[0]+2}),:nth-child(${interval[1]+2}))`, p => p.classList.add('mark'));
+    }
+    Chart.safety = (percent = 90) => {
+        Q('figure p.safe')?.classList.remove('safe');
+        let interval = [], lower = percent/100;
+        Chart.data ?? Chart.getData();
+        let sum = 0;
+        for (let i = 0; i < 55; i++)
+            if ((sum += Chart.data[i]) >= lower) {
+                interval[0] = i;
+                break;
+            }
+        Q(`figure p:nth-child(${interval[0]+2})`).classList.add('safe');
+    }
+
+    Q('#CI').oninput = ev => {
+        ev.target.nextElementSibling.value = ev.target.value;
+        Chart.confidence(ev.target.value);
+    }
+    Q('#safety').oninput = ev => {
+        ev.target.nextElementSibling.value = ev.target.value;
+        Chart.safety(ev.target.value);
+    }
+</script>

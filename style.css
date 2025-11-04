@@ -1,0 +1,96 @@
+
+section {
+    position:relative;
+}
+#single figure {
+    display:grid; grid-template-columns:repeat(3,5em);
+    justify-content:center;
+    position:absolute; left:50%; top:2em; transform:translate(-50%,0);
+
+    gc-item:not(.done) {opacity:.5; filter:brightness(.5);}
+}
+button {
+    width:6em; height:6em;
+    position:relative;
+    display:inline-flex; justify-content:center; align-items:center;
+    background:#ffffff55;
+    border:.2em solid; border-radius:.5em;
+    margin:1em 1em 0 1em;
+    z-index:0;
+
+    gc-item {
+        position:absolute; inset:0;
+        z-index:-1;
+    }
+}
+p {margin-bottom:0;}
+p>* {vertical-align:middle;}
+progress {
+    appearance:none;
+    display:flex; align-items:center; gap:0 .5em;
+    width:calc(min(20em,100%) - .5em); height:1em;
+    margin:1em auto;
+    white-space:nowrap;
+    position:relative;
+    z-index:1;
+
+    &::before,&::after {position:absolute;}
+    &::before {
+        content:'Piece 'attr(title)'　['attr(data-rate)'%]';
+        left:.25em;
+    }
+    &::after {
+        content:attr(value)'/'attr(max);
+        right:.25em;
+    }
+    &::-webkit-progress-bar {background:#ffffff55;}
+    &::-webkit-progress-value {background:#ffbb0088;}
+}
+#multiple figure {
+    display:grid; grid-auto-flow: column; grid-template-rows: min-content auto;
+    align-items:end;
+    padding-bottom:1em;
+    overflow-x:scroll;
+    position:relative;
+    
+    p {
+        min-width:1em; 
+        background:yellow;
+        margin:0;
+        position:relative;
+
+        &::before {
+            content:attr(title)'_'; line-height:1;
+            mix-blend-mode:difference; z-index:1;
+            position:absolute; bottom:.1em; left:50%; transform:translateX(-50%);
+            writing-mode:vertical-rl;
+        }
+        &.mark {background:chartreuse;}
+        &.safe {background:orange;}
+    }
+    figcaption {
+        grid-area:1/1/2/99;
+        margin-left:-11em;
+    }
+    span {
+        position:absolute; bottom:3em; left:102%;
+        width:10em;
+        mix-blend-mode:difference;
+        z-index:1;
+    }
+}
+ul {
+    text-align:left;
+    margin:.5em;
+}
+input[type=range] {
+    vertical-align: middle;
+    margin-right:.5em;
+}
+mark {
+    margin-left:.5em;
+}
+p:has(#toggle-piece:not(:checked))+p data:last-of-type,
+p:has(#toggle-piece:checked)+p data:first-of-type {
+    display:none;
+}
